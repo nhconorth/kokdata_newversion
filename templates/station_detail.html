@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>รายละเอียดสถานี {{ station.station }}</title>
+<link rel="icon" type="image/x-icon" href="/static/image/favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/css/style1.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+<div class="container">
+    <!-- ========== Header Actions ========== -->
+    <div class="header-actions">
+        <button class="back-button" onclick="goBack()">ย้อนกลับ</button>
+        {% if session.logged_in %}
+        <div class="station-actions">
+            <a href="/edit-station/{{ station.station }}" class="edit-button">
+                ✏️ แก้ไข
+            </a>
+            <button onclick="deleteStation('{{ station.station }}')" class="delete-button">
+                🗑️ ลบสถานี
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ========== Station Header ========== -->
+    <div class="station-header">
+        <h1>📍 รายละเอียดสถานี</h1>
+        <div class="station-code">{{ station.station }}</div>
+    </div>
+
+    <!-- ========== Data Source Box ========== -->
+    <div class="data-source-box">
+        <strong>📊 ใช้ข้อมูลจาก:</strong> สถานการณ์คุณภาพสิ่งแวดล้อมในแม่น้ำกกและลำน้ำสาขา 
+        แม่น้ำสาย แม่น้ำรวก แม่น้ำโขง และผลกระทบกรณีปัญหาสารปนเปื้อนเกินค่ามาตรฐาน 
+        ข้อมูล ณ วันที่ 24 มีนาคม 2569 เวลา 16.30 น. 
+        สำนักงานสิ่งแวดล้อมและควบคุมมลพิษที่ 1 (เชียงใหม่)
+    </div>
+
+    <!-- ========== Main Grid: Map + Info ========== -->
+    <div class="main-grid">
+        <!-- Map Card -->
+        <div class="map-card">
+            <h3>🗺️ ตำแหน่งบนแผนที่</h3>
+            <div id="station-map"></div>
+        </div>
+
+        <!-- Station Info Card -->
+        <div class="info-card">
+            <h3 style="margin-bottom: 20px; color: #2c3e50;">📋 ข้อมูลสถานี</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <img src="/static/image/river.png" alt="">
+                    <span class="info-label">แม่น้ำ</span>
+                    <span class="info-value">{{ station.river }}</span>
+                </div>
+                <div class="info-item">
+                    <img src="/static/image/pin.png" alt="">
+                    <span class="info-label">ตำบล</span>
+                    <span class="info-value">{{ station.tambon }}</span>
+                </div>
+                <div class="info-item">
+                    <img src="/static/image/bank.png" alt="">
+                    <span class="info-label">อำเภอ</span>
+                    <span class="info-value">{{ station.amphoe }}</span>
+                </div>
+                <div class="info-item">
+                    <img src="/static/image/book.png" alt="">
+                    <span class="info-label">จังหวัด</span>
+                    <span class="info-value">{{ station.province }}</span>
+                </div>
+            </div>
+            <div class="location-box">
+                <img src="/static/image/placeholder.png" alt="" height="20px" width="20px">
+                <strong>ที่ตั้ง:</strong> {{ station.location }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== Water Quality Section ========== -->
+    <div class="data-section">
+        <h2>💧 ผลคุณภาพน้ำในแม่น้ำกกและลำน้ำสาขา</h2>
+        {% if water_data and water_data.pivot %}
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-target="water-table">📊 ตาราง</button>
+            <button class="tab-btn" data-target="water-chart">📈 กราฟ</button>
+        </div>
+
+        <!-- Table Tab -->
+        <div id="water-table" class="tab-content active">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>สิ่งที่ตรวจ</th>
+                            {% for check_num in water_data.check_numbers %}
+                            <th>ครั้งที่ {{ check_num }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in water_data.pivot_list %}
+                        <tr>
+                            <td>{{ row.parameter }} ({{ row.unit }})</td>
+                            {% for check_num in water_data.check_numbers %}
+                            {% set check_str = check_num|string %}
+                            {% set val = row.check_values.get(check_str, '') %}
+                            {% set numeric_val = 0 %}
+                            {% set is_valid_number = false %}
+                            {% if val and val not in ['-', 'ND'] %}
+                                {% set numeric_val = val|float %}
+                                {% set is_valid_number = true %}
+                            {% endif %}
+                            {% set standard_limit = none %}
+                            {% if row.parameter == 'สารหนู' %}{% set standard_limit = 0.01 %}
+                            {% elif row.parameter == 'แมงกานีส' %}{% set standard_limit = 1.0 %}
+                            {% elif row.parameter == 'ตะกั่ว' %}{% set standard_limit = 0.05 %}
+                            {% elif row.parameter == 'ปรอท' %}{% set standard_limit = 0.002 %}
+                            {% elif row.parameter == 'ทองแดง' %}{% set standard_limit = 0.1 %}
+                            {% elif row.parameter == 'สังกะสี' %}{% set standard_limit = 1.0 %}
+                            {% elif row.parameter == 'นิกเกิล' %}{% set standard_limit = 0.1 %}
+                            {% elif row.parameter == 'แคดเมียม' %}{% set standard_limit = 0.005 %}
+                            {% endif %}
+                            <td {% if standard_limit is not none and is_valid_number and numeric_val > standard_limit %}class="exceeds-limit"{% endif %}>
+                                {% if val and val not in ['-', 'ND'] %}{{ val }}{% else %}<span style="color:#ccc;">-</span>{% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="chart-warning-legend">
+                <span class="legend-red">🔴 สีแดง</span> หมายถึง เกินค่ามาตรฐาน
+            </div>
+        </div>
+
+        <!-- Chart Tab -->
+        <div id="water-chart" class="tab-content">
+            <div class="chart-container">
+                <div class="parameter-selector">
+                    <select id="water-parameter-select">
+                        <option value="">เลือกสิ่งที่ตรวจ</option>
+                        {% for row in water_data.pivot_list %}
+                        <option value="{{ row.parameter }}">{{ row.parameter }} ({{ row.unit }})</option>
+                        {% endfor %}
+                    </select>
+                    <button class="chart-toggle" id="water-chart-toggle">แสดงกราฟ</button>
+                </div>
+                <div id="water-chart-container" style="display:none;">
+                    <div class="chart-wrapper">
+                        <canvas id="waterChart"></canvas>
+                    </div>
+                    <div class="chart-warning">
+                        ⚠️ กรณีที่กราฟแสดงเป็น 0 เนื่องจากค่าน้อยกว่าที่ห้องปฏิบัติการสามารถอ่านผลได้ 
+                        ให้ดูจากผลในตารางเป็นหลัก
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="period-note">
+            <strong>กรมควบคุมมลพิษ</strong> ได้ดำเนินตรวจวัดและเก็บตัวอย่างน้ำในแม่น้ำกกและลำน้ำสาขา 
+            แม่น้ำสาย แม่น้ำรวก และแม่น้ำโขง ระหว่างเดือนมีนาคม 2568 ถึงเดือนมีนาคม 2569 ดังนี้:<br>
+            {% for i in range(1, 18) %}
+            ▪ <strong>ครั้งที่ {{ i }}</strong> {% if i==1 %} เมื่อวันที่ 19 - 24 มีนาคม 2568 และวันที่ 9 เมษายน 2568
+            {% elif i==2 %} เมื่อวันที่ 21 - 24 เมษายน 2568 และวันที่ 29 เมษายน - 2 พฤษภาคม 2568
+            {% elif i==3 %} เมื่อวันที่ 12 - 16 พฤษภาคม 2568
+            {% elif i==4 %} เมื่อวันที่ 26 - 30 พฤษภาคม 2568
+            {% elif i==5 %} เมื่อวันที่ 9 - 13 มิถุนายน 2568
+            {% elif i==6 %} เมื่อวันที่ 23 - 27 มิถุนายน 2568
+            {% elif i==7 %} เมื่อวันที่ 30 มิถุนายน - 4 กรกฎาคม 2568
+            {% elif i==8 %} เมื่อวันที่ 21 - 25 กรกฎาคม 2568
+            {% elif i==9 %} เมื่อวันที่ 4 - 8 สิงหาคม 2568
+            {% elif i==10 %} เมื่อวันที่ 18 – 22 สิงหาคม 2568
+            {% elif i==11 %} เมื่อวันที่ 1 – 5 กันยายน 2568
+            {% elif i==12 %} เมื่อวันที่ 22 – 26 กันยายน 2568
+            {% elif i==13 %} เมื่อวันที่ 4 – 7 พฤศจิกายน 2568
+            {% elif i==14 %} เมื่อวันที่ 9 – 12 ธันวาคม 2568
+            {% elif i==15 %} เมื่อวันที่ 13 – 16 มกราคม 2569
+            {% elif i==16 %} เมื่อวันที่ 24 - 27 กุมภาพันธ์ 2569
+            {% elif i==17 %} เมื่อวันที่ 10 – 13 มีนาคม 2569 {% endif %}<br>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-data">📭 ไม่มีข้อมูลคุณภาพน้ำ</div>
+        {% endif %}
+    </div>
+
+    <!-- ========== Soil Quality Section ========== -->
+    <div class="data-section">
+        <h2>🌱 ผลคุณภาพตะกอนดินในแม่น้ำกกและลำน้ำสาขา</h2>
+        {% if soil_data and soil_data.pivot %}
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" data-target="soil-table">📊 ตาราง</button>
+            <button class="tab-btn" data-target="soil-chart">📈 กราฟ</button>
+        </div>
+
+        <!-- Table Tab -->
+        <div id="soil-table" class="tab-content active">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>สารที่ตรวจ</th>
+                            {% for check_num in soil_data.check_numbers %}
+                            <th>ครั้งที่ {{ check_num }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in soil_data.pivot_list %}
+                        <tr>
+                            <td>{{ row.parameter }}</td>
+                            {% for check_num in soil_data.check_numbers %}
+                            {% set check_str = check_num|string %}
+                            {% set val = row.check_values.get(check_str, '') %}
+                            {% set numeric_val = 0 %}
+                            {% set is_valid_number = false %}
+                            {% if val and val not in ['-', 'ND'] %}
+                                {% set numeric_val = val|float %}
+                                {% set is_valid_number = true %}
+                            {% endif %}
+                            {% set unsafe_limit = none %}
+                            {% if row.parameter == 'สารหนู' %}{% set unsafe_limit = 33 %}
+                            {% elif row.parameter == 'แคดเมียม' %}{% set unsafe_limit = 5 %}
+                            {% elif row.parameter == 'นิกเกิล' %}{% set unsafe_limit = 50 %}
+                            {% elif row.parameter == 'ตะกั่ว' %}{% set unsafe_limit = 130 %}
+                            {% elif row.parameter == 'สังกะสี' %}{% set unsafe_limit = 460 %}
+                            {% elif row.parameter == 'ทองแดง' %}{% set unsafe_limit = 150 %}
+                            {% elif row.parameter == 'ปรอท' %}{% set unsafe_limit = 1.0 %}
+                            {% elif row.parameter == 'โครเมียม' %}{% set unsafe_limit = 110 %}
+                            {% endif %}
+                            <td {% if unsafe_limit is not none and is_valid_number and numeric_val >= unsafe_limit %}class="exceeds-limit"{% endif %}>
+                                {% if val and val not in ['-', 'ND'] %}{{ val }}{% else %}<span style="color:#ccc;">-</span>{% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="chart-warning-legend">
+                <span class="legend-red">🔴 สีแดง</span> หมายถึง เกินมาตรฐานคุณภาพตะกอนดินระดับไม่ปลอดภัยต่อสัตว์หน้าดิน
+            </div>
+        </div>
+
+        <!-- Chart Tab -->
+        <div id="soil-chart" class="tab-content">
+            <div class="chart-container">
+                <div class="parameter-selector">
+                    <select id="soil-parameter-select">
+                        <option value="">เลือกสารที่ตรวจ</option>
+                        {% for row in soil_data.pivot_list %}
+                        <option value="{{ row.parameter }}">{{ row.parameter }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="chart-toggle" id="soil-chart-toggle">แสดงกราฟ</button>
+                </div>
+                <div id="soil-chart-container" style="display:none;">
+                    <div class="chart-wrapper">
+                        <canvas id="soilChart"></canvas>
+                    </div>
+                    <div class="chart-warning-legend">
+                        <span class="legend-blue">🔵 สีน้ำเงิน</span> หมายถึง มาตรฐานคุณภาพตะกอนดินระดับที่ปลอดภัยต่อสัตว์หน้าดิน<br>
+                        <span class="legend-red">🔴 สีแดง</span> หมายถึง มาตรฐานคุณภาพตะกอนดินระดับที่เป็นอันตรายต่อสัตว์หน้าดินอย่างรุนแรง
+                    </div>
+                    <div class="chart-warning">
+                        ⚠️ กรณีที่กราฟแสดงเป็น 0 เนื่องจากค่าน้อยกว่าที่ห้องปฏิบัติการสามารถอ่านผลได้ 
+                        ให้ดูจากผลในตารางเป็นหลัก
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="period-note">
+            <strong>กรมควบคุมมลพิษ</strong> ได้ดำเนินตรวจวัดและเก็บตัวอย่างตะกอนดินในแม่น้ำกกและลำน้ำสาขา 
+            แม่น้ำสาย แม่น้ำรวก และแม่น้ำโขง ระหว่างเดือนมีนาคม 2568 ถึงเดือนมีนาคม 2569 ดังนี้:<br>
+            {% for i in range(1, 11) %}
+            ▪ <strong>ครั้งที่ {{ i }}</strong> {% if i==1 %} เมื่อวันที่ 19 - 24 มีนาคม 2568 และวันที่ 9 เมษายน 2568
+            {% elif i==2 %} เมื่อวันที่ 21 - 24 เมษายน 2568 และวันที่ 29 เมษายน - 2 พฤษภาคม 2568
+            {% elif i==3 %} เมื่อวันที่ 26 - 30 พฤษภาคม 2568
+            {% elif i==4 %} เมื่อวันที่ 23 - 27 มิถุนายน 2568
+            {% elif i==5 %} เมื่อวันที่ 21 - 25 กรกฎาคม 2568
+            {% elif i==6 %} เมื่อวันที่ 18 – 22 สิงหาคม 2568
+            {% elif i==7 %} เมื่อวันที่ 22 – 26 กันยายน 2568
+            {% elif i==8 %} เมื่อวันที่ 11 – 14 พฤศจิกายน 2568
+            {% elif i==9 %} เมื่อวันที่ 6 – 9 มกราคม 2569
+            {% elif i==10 %} เมื่อวันที่ 8 - 11 มีนาคม 2569 {% endif %}<br>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-data">📭 ไม่มีข้อมูลคุณภาพดิน</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ✅ Footer อยู่นอกสุด ก่อนปิด body -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <strong>สำนักงานคณะกรรมการสุขภาพแห่งชาติ (สช.)</strong>
+                </div>
+                <div class="footer-info">
+                    <p class="footer-name">นางสาวเบญวรรณ สาธุชน</p>
+                    <div class="footer-contact">
+                        <span>📞 <a href="tel:0635420279" style="text-decoration: none;">063-542-0279</a></span>
+                        <span>✉️ <a href="mailto:benyawansathuchon@gmail.com" style="text-decoration: none;">benyawansathuchon@gmail.com</a></span>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-copyright">
+                <p>&copy; 2026 National Health Commission Office (NHCO). All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+<!-- ========== Modals ========== -->
+<div id="deleteModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-icon warning">⚠️</div>
+        <h3>ยืนยันการลบสถานี</h3>
+        <p id="deleteModalMessage">คุณต้องการลบสถานีนี้หรือไม่?<br>ข้อมูลทั้งหมดจะถูกลบอย่างถาวร</p>
+        <div class="modal-buttons">
+            <button id="deleteCancelBtn" class="btn-modal btn-modal-secondary">ยกเลิก</button>
+            <button id="deleteConfirmBtn" class="btn-modal btn-modal-danger">ลบสถานี</button>
+        </div>
+    </div>
+</div>
+
+<div id="deleteSuccessModal" class="modal-overlay">
+    <div class="modal-container">
+        <div class="modal-icon success">✅</div>
+        <h3>ลบสถานีสำเร็จ</h3>
+        <p id="deleteSuccessMessage">ลบสถานีเรียบร้อยแล้ว</p>
+        <div class="modal-buttons">
+            <button id="deleteSuccessBtn" class="btn-modal btn-modal-primary">ตกลง</button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+
+<script>
+// ฟังก?ชันย้อนกลับ
+function goBack() {
+    // ตรวจสอบว่ามาจากหน้าแก้ไขหรือไม่
+    const referrer = document.referrer;
+    
+    // ถ้ามาจากหน้าแก้ไข (/edit-station/...) จะไปหน้าหลักเลย
+    if (referrer && referrer.includes('/edit-station/')) {
+        window.location.href = '/';
+    } 
+    // กรณีอื่นๆ จะใช้ history.back() ตามปกติ
+    else if (referrer && referrer.includes(window.location.hostname)) {
+        window.history.back();
+    } 
+    // กรณีไม่มี referrer หรือเป็นเว็บอื่น จะไปหน้าหลัก
+    else {
+        window.location.href = '/';
+    }
+}
+
+// ========== Map Initialization ==========
+document.addEventListener('DOMContentLoaded', function() {
+    // ใช้ |tojson เพื่อแปลงค่า Python ไป JavaScript 
+    const lat = {{ station.lat | tojson }};
+    const lon = {{ station.lon | tojson }};
+    const name = {{ station.station | tojson }};
+    const loc = {{ station.location | tojson }};
+    // กรณีไม่มีพิกัด จะแสดงข้อความแทนแผนที่
+    if (!lat || !lon) {
+        document.getElementById('station-map').innerHTML = `
+            <div style="height:100%;display:flex;align-items:center;justify-content:center;
+            background:#f8f9fa;border-radius:12px;color:#888;font-size:1em;">
+            ⚠️ ยังไม่มีข้อมูลพิกัดของสถานีนี้
+            </div>`;
+        return;
+    }
+    // สร้างแผนที่
+    const stationMap = L.map('station-map').setView([lat, lon], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 19
+    }).addTo(stationMap);
+    // เพิ่ม Marker พร้อม Popup
+    L.marker([lat, lon]).addTo(stationMap)
+        .bindPopup(`<div style="text-align:center;min-width:180px;padding:6px;">
+            <strong style="color:#2c3e50;">🌊 ${name}</strong><br>
+            <span style="color:#666;font-size:0.85em;">📍 ${loc}</span><br>
+            <hr style="margin:6px 0;border:0;border-top:1px solid #ddd;">
+            <span style="color:#666;font-size:0.8em;">Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}</span>
+        </div>`).openPopup();
+    // รีเฟรชขนาดแผนที่หลังโหลดเสร็จ
+    setTimeout(() => stationMap.invalidateSize(), 100);
+});
+
+// ========== Modal Functions ==========
+function showDeleteModal(stationCode, onConfirm) {
+    const modal = document.getElementById('deleteModal');
+    const message = document.getElementById('deleteModalMessage');
+    const confirmBtn = document.getElementById('deleteConfirmBtn');
+    const cancelBtn = document.getElementById('deleteCancelBtn');
+    
+    message.innerHTML = `คุณต้องการลบสถานี "<strong>${stationCode}</strong>" หรือไม่?<br>ข้อมูลทั้งหมดจะถูกลบอย่างถาวร`;
+    modal.classList.add('active');
+    
+    const cleanup = () => {
+        confirmBtn?.removeEventListener('click', handleConfirm);
+        cancelBtn?.removeEventListener('click', handleCancel);
+        modal?.removeEventListener('click', handleOverlay);
+        document.removeEventListener('keydown', handleEsc);
+    };
+    // ฟังก์ชันจัดการเหตุการณ์
+    const handleConfirm = () => { modal.classList.remove('active'); if(onConfirm) onConfirm(); cleanup(); };
+    const handleCancel = () => { modal.classList.remove('active'); cleanup(); };
+    const handleOverlay = (e) => { if(e.target===modal) { modal.classList.remove('active'); cleanup(); } };
+    const handleEsc = (e) => { if(e.key==='Escape') { modal.classList.remove('active'); cleanup(); } };
+    
+    confirmBtn?.addEventListener('click', handleConfirm);
+    cancelBtn?.addEventListener('click', handleCancel);
+    modal?.addEventListener('click', handleOverlay);
+    document.addEventListener('keydown', handleEsc);
+}
+
+function showDeleteSuccessModal(stationCode, onConfirm) {
+    const modal = document.getElementById('deleteSuccessModal');
+    const message = document.getElementById('deleteSuccessMessage');
+    const confirmBtn = document.getElementById('deleteSuccessBtn');
+    
+    message.textContent = `ลบสถานี "${stationCode}" เรียบร้อยแล้ว`;
+    modal.classList.add('active');
+    // ฟังก์ชันลบ Event Listeners 
+    const cleanup = () => {
+        confirmBtn?.removeEventListener('click', handleConfirm);
+        modal?.removeEventListener('click', handleOverlay);
+        document.removeEventListener('keydown', handleEsc);
+    };
+    
+    const handleConfirm = () => { modal.classList.remove('active'); if(onConfirm) onConfirm(); cleanup(); };
+    const handleOverlay = (e) => { if(e.target===modal) { modal.classList.remove('active'); if(onConfirm) onConfirm(); cleanup(); } };
+    const handleEsc = (e) => { if(e.key==='Escape') { modal.classList.remove('active'); if(onConfirm) onConfirm(); cleanup(); } };
+    
+    confirmBtn?.addEventListener('click', handleConfirm);
+    modal?.addEventListener('click', handleOverlay);
+    document.addEventListener('keydown', handleEsc);
+}
+// ฟังก์ชันลบสถานี
+function deleteStation(stationCode) {
+    showDeleteModal(stationCode, () => {
+        fetch(`/delete-station/${stationCode}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                showDeleteSuccessModal(stationCode, () => { window.location.href = '/'; }); // กลับไปหน้าหลัก  
+            } else { alert('❌ เกิดข้อผิดพลาด: ' + data.message); }
+        })
+        .catch(() => alert('❌ ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้'));
+    });
+}
+
+// ========== Chart Functions ==========
+const waterData = {{ water_data|tojson }};
+const soilData = {{ soil_data|tojson }};
+let waterChart = null, soilChart = null;
+
+function filterDataForChart(numeric_values, check_numbers) {
+    const data = [], labels = [];
+    for(const checkNum of check_numbers) {
+        const val = numeric_values[checkNum.toString()];
+        if(val !== undefined && val !== null && !isNaN(parseFloat(val))) {
+            data.push(parseFloat(val));
+            labels.push(`ครั้งที่ ${checkNum}`);
+        }
+    }
+    return { data, labels };
+}
+// สร้างกราฟสำหรับ Water Chart
+function createWaterChart(parameter) {
+    // ค้นหาข้อมูลพารามิเตอร์ทที่เลือก
+    const row = waterData.pivot_list_filtered?.find(r => r.parameter === parameter);
+    if(!row || !row.numeric_values) return;
+    // กรองข้อมูลเฉพาะค่าที่เป็นตัวเลข
+    const { data, labels } = filterDataForChart(row.numeric_values, waterData.check_numbers);
+    if(data.length === 0) return;
+    
+    const ctx = document.getElementById('waterChart').getContext('2d');
+    if(waterChart) waterChart.destroy();
+    // กำหนดค่ามาตรฐานสำหรับเส้นแสดงค่ามาตรฐาน
+    const thresholds = { 'สารหนู':0.01,'แมงกานีส':1.0,'ตะกั่ว':0.05,'ปรอท':0.002,'ทองแดง':0.1,'สังกะสี':1.0,'นิกเกิล':0.1,'แคดเมียม':0.005 };
+    // สร้าง Annotation เส้นแสดงค่ามาตรฐาน
+    const annotations = thresholds[parameter] ? {
+        thresholdLine: { type:'line', yMin:thresholds[parameter], yMax:thresholds[parameter],
+            borderColor:'red', borderWidth:2, borderDash:[6,6],
+            label:{ display:true, content:`ค่ามาตรฐาน: < ${thresholds[parameter]}`, position:'start',
+                backgroundColor:'red', color:'white', font:{size:12} } }
+    } : {};
+    
+    waterChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: `${parameter} (${row.unit})`, data,
+            borderColor: 'rgb(102,126,234)', backgroundColor: 'rgba(102,126,234,0.1)',
+            borderWidth: 2, tension: 0.4, fill: true, pointRadius: 5 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend:{display:true,position:'top'}, annotation:{ annotations } },
+            scales: { y:{ beginAtZero:false, title:{display:true,text:`ค่า (${row.unit})`} },
+                      x:{ title:{display:true,text:'ครั้งที่ตรวจ'} } }
+        }
+    });
+}
+
+function createSoilChart(parameter) {
+    const row = soilData.pivot_list_filtered?.find(r => r.parameter === parameter);
+    if(!row || !row.numeric_values) return;
+    
+    const { data, labels } = filterDataForChart(row.numeric_values, soilData.check_numbers);
+    if(data.length === 0) return;
+    
+    const ctx = document.getElementById('soilChart').getContext('2d');
+    if(soilChart) soilChart.destroy();
+    
+    const annotations = (() => {
+        const limits = {
+            'สารหนู': {safe:10, unsafe:33}, 'แคดเมียม': {safe:1, unsafe:5},
+            'นิกเกิล': {safe:23, unsafe:50}, 'ตะกั่ว': {safe:36, unsafe:130},
+            'สังกะสี': {safe:120, unsafe:460}, 'ทองแดง': {safe:31.5, unsafe:150},
+            'ปรอท': {safe:0.2, unsafe:1.0}, 'โครเมียม': {safe:43.4, unsafe:110}
+        };
+        const lim = limits[parameter];
+        if(!lim) return {};
+        return {
+            safeLine: { type:'line', yMin:lim.safe, yMax:lim.safe, borderColor:'blue', borderWidth:2, borderDash:[6,6],
+                label:{display:true, content:`มาตรฐานคุณภาพตะกอนดินระดับที่ปลอดภัยต่อสัตว์หน้าดิน: ≤ ${lim.safe}`, position:'start', backgroundColor:'blue', color:'white', font:{size:11}} },
+            unsafeLine: { type:'line', yMin:lim.unsafe, yMax:lim.unsafe, borderColor:'red', borderWidth:2, borderDash:[6,6],
+                label:{display:true, content:`มาตรฐานคุณภาพตะกอนดินระดับที่เป็นอันตรายต่อสัตว์หน้าดินอย่างรุนแรง: ≥ ${lim.unsafe}`, position:'end', backgroundColor:'red', color:'white', font:{size:11}} }
+        };
+    })();
+    
+    soilChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: parameter, data,
+            borderColor: 'rgb(118,75,162)', backgroundColor: 'rgba(118,75,162,0.1)',
+            borderWidth: 2, tension: 0.4, fill: true, pointRadius: 5 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend:{display:true,position:'top'}, annotation:{ annotations } },
+            scales: { y:{ beginAtZero:false, title:{display:true,text:'ค่า'} },
+                      x:{ title:{display:true,text:'ครั้งที่ตรวจ'} } }
+        }
+    });
+}
+
+// ========== Tab Switching ==========
+function setupTabSwitching() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.target;
+            const section = btn.closest('.data-section');
+            section.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            section.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(target).classList.add('active');
+            if(target.includes('chart')) {
+                const container = document.getElementById(target.replace('-chart','-chart-container'));
+                const toggle = document.getElementById(target.replace('-chart','-chart-toggle'));
+                if(container) container.style.display = 'none';
+                if(toggle) { toggle.style.display = 'none'; toggle.classList.remove('active'); }
+            }
+        });
+    });
+}
+
+// ========== Chart Toggle Handlers (ปรับปรุงใหม่) ==========
+function setupChartHandlers() {
+    // ===== Water Chart =====
+    const waterSelect = document.getElementById('water-parameter-select');
+    const waterContainer = document.getElementById('water-chart-container');
+    
+    if(waterSelect && waterContainer) {
+        // เมื่อเปลี่ยนสาร → แสดงกราฟทันที + แทนที่กราฟเก่า
+        waterSelect.addEventListener('change', function() {
+            if(this.value) {
+                // แสดง container กราฟ
+                waterContainer.style.display = 'block';
+                
+                // ทำลายกราฟเก่าก่อนสร้างใหม่ (ป้องกันซ้อน)
+                if(waterChart) {
+                    waterChart.destroy();
+                    waterChart = null;
+                }
+                
+                // สร้างกราฟใหม่ทันที
+                createWaterChart(this.value);
+            } else {
+                // ถ้าไม่เลือกอะไร → ซ่อนกราฟ
+                waterContainer.style.display = 'none';
+                if(waterChart) {
+                    waterChart.destroy();
+                    waterChart = null;
+                }
+            }
+        });
+    }
+    
+    // ===== Soil Chart =====
+    const soilSelect = document.getElementById('soil-parameter-select');
+    const soilContainer = document.getElementById('soil-chart-container');
+    
+    if(soilSelect && soilContainer) {
+        // เมื่อเปลี่ยนสาร → แสดงกราฟทันที + แทนที่กราฟเก่า
+        soilSelect.addEventListener('change', function() {
+            if(this.value) {
+                // แสดง container กราฟ
+                soilContainer.style.display = 'block';
+                
+                // ทำลายกราฟเก่าก่อนสร้างใหม่ (ป้องกันซ้อน)
+                if(soilChart) {
+                    soilChart.destroy();
+                    soilChart = null;
+                }
+                
+                // สร้างกราฟใหม่ทันที
+                createSoilChart(this.value);
+            } else {
+                // ถ้าไม่เลือกอะไร → ซ่อนกราฟ
+                soilContainer.style.display = 'none';
+                if(soilChart) {
+                    soilChart.destroy();
+                    soilChart = null;
+                }
+            }
+        });
+    }
+}
+
+// ========== Init ==========
+document.addEventListener('DOMContentLoaded', function() {
+    setupTabSwitching();
+    setupChartHandlers();
+});
+</script>
+</body>
+</html>

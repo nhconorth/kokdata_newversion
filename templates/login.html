@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เข้าสู่ระบบ</title>
+    <link rel="icon" type="image/x-icon" href="/static/image/favicon.ico">
+    <link rel="stylesheet" href="/static/css/login_style.css">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-button">ย้อนกลับ</a>
+        
+        <div class="login-box">
+            <h2>เข้าสู่ระบบ</h2>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash-error">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <form id="loginForm" method="POST">
+                <div class="form-group">
+                    <label for="username">ชื่อผู้ใช้</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">รหัสผ่าน</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn" id="loginBtn">เข้าสู่ระบบ</button>
+            </form>
+        </div>
+    </div>
+    <!-- Modal Popup -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="modal-container">
+            <div id="modalIcon" class="modal-icon">✅</div>
+            <h3 id="modalTitle">แจ้งเตือน</h3>
+            <p id="modalMessage"></p>
+            <div class="modal-buttons">
+                <button id="modalBtn" class="btn-modal btn-modal-primary">ตกลง</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ฟังก์ชันแสดง Modal
+    function showModal(type, title, message, onConfirm = null) {
+        const modal = document.getElementById('loginModal');
+        const modalIcon = document.getElementById('modalIcon');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalBtn = document.getElementById('modalBtn');
+        // ตั้งค่าไอคอนและข้อความตาม type (success/error)
+        if (type === 'success') {
+            modalIcon.textContent = '✅';
+            modalIcon.className = 'modal-icon success';
+        } else {
+            modalIcon.textContent = '❌';
+            modalIcon.className = 'modal-icon error';
+        }
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        modal.classList.add('active'); // แสดง Modal 
+        
+        // ฟังก์ชันจัดการเมื่อกดปุ่มตกลง    
+        const handleConfirm = () => {
+            modal.classList.remove('active');
+            if (onConfirm) onConfirm();// รันฟังก์ชันต่อ (เช่น เปลี่ยนหน้า)
+            cleanup();
+        };
+        // ฟังก์ชันล้าง Event Listeners เพื่อป้องกันความจำรั่ว
+        const cleanup = () => {
+            modalBtn?.removeEventListener('click', handleConfirm);
+            modal?.removeEventListener('click', handleOverlayClick);
+            document.removeEventListener('keydown', handleEsc);
+        };
+        // ปิด Modalเมื่อคลิกพื้นหลัง
+        const handleOverlayClick = (e) => {
+            if (e.target === modal) { modal.classList.remove('active'); cleanup(); }
+        };
+        // ปิด Modal เมื่อกดปุ่ม Esc
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') { modal.classList.remove('active'); cleanup(); }
+        };
+        // ผูก Event Listeners
+        modalBtn?.addEventListener('click', handleConfirm);
+        modal?.addEventListener('click', handleOverlayClick);
+        document.addEventListener('keydown', handleEsc);
+    }
+        
+    // แสดง Flash Message ผ่าน Modal
+    document.addEventListener('DOMContentLoaded', () => {
+        const flashMsg = document.getElementById('flashMessage');
+        if (flashMsg && flashMsg.textContent.trim()) {
+            showModal('error', 'เข้าสู่ระบบไม่สำเร็จ', flashMsg.textContent);
+        }
+    });
+        
+    // จัดการ Submit Form
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            // เตรียมปุ่มและข้อมูล    
+            const loginBtn = document.getElementById('loginBtn');
+            const originalBtnText = loginBtn.textContent;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            // แสดงสถานะ "กำลังโหลด"   
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'กำลังเข้าสู่ระบบ...';
+                
+            try {
+                // 🔧 === MODE ทดสอบ (เปิดใช้เพื่อทดสอบโดยไม่ต้องแก้ backend) ===
+                // เปลี่ยนเป็น true เพื่อทดสอบ, เปลี่ยนเป็น false เมื่อเชื่อม backend จริง
+                const TEST_MODE = false;
+                    
+                if (TEST_MODE) {
+                    await new Promise(resolve => setTimeout(resolve, 800)); // จำลอง delay
+                    if (username === 'admin' && password === '1234') {
+                        showModal('success', 'เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับกลับมา!', () => {
+                            window.location.href = '/dashboard';
+                        });
+                    } else {
+                        showModal('error', 'เข้าสู่ระบบไม่สำเร็จ', 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                    }
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = originalBtnText;
+                    return;
+                }
+                // 🔧 === จบ MODE ทดสอบ ===
+                 // ส่งข้อมูลไป Backend ด้วย Fetch API    
+                const formData = new FormData(loginForm);
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' } // บอก Backend ว่าเป็น AJAX
+                });
+                    
+                // ตรวจสอบว่า response เป็น JSON หรือไม่
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Backend ไม่ได้คืนค่า JSON - ตรวจสอบ route /login');
+                }
+                    
+                const result = await response.json();
+                // จัดการผลลัพธ์    
+                if (result.success) {
+                    showModal('success', 'เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับกลับมา!', () => {
+                        window.location.href = result.redirect_url || '/dashboard';
+                    });
+                } else {
+                    showModal('error', 'เข้าสู่ระบบไม่สำเร็จ', result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+                }
+                    
+                } catch (error) {
+                    console.error('❌ Login Error:', error);
+                    showModal('error', 'เกิดข้อผิดพลาด', error.message || 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+                } finally {
+                     // คืนสถานะปุ่ม (ไม่ว่าสำเร็จหรือล้มเหลว)
+                    const loginBtn = document.getElementById('loginBtn');
+                    if (loginBtn) {
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = originalBtnText;
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

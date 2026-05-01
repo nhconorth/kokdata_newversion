@@ -1,0 +1,33 @@
+services:
+  web:
+    build: .
+    container_name: kok-station-app
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount database to persist data
+      - ./kok_data.db:/app/kok_data.db
+      # Mount CSV folder for data updates
+      - ./csv:/app/csv
+    environment:
+      - FLASK_ENV=production
+      - FLASK_DEBUG=0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - llm-stack
+      - stack_llm-stack
+
+networks:
+  llm-stack:
+    external: true
+    name: llm-stack
+  stack_llm-stack:
+    external: true
+    name: stack_llm-stack
+

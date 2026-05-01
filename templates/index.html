@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สถานีในตำบล</title>
+    <link rel="icon" type="image/x-icon" href="/static/image/favicon.ico">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="/static/css/style.css">
+
+</head>
+<body>
+<!-- ========== Navigation Menu ========== -->
+<nav class="nav-menu">
+    <div class="nav-container">
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+        <ul class="nav-items" id="navItems">
+            <li class="nav-item">
+                <a href="/" class="nav-link" onclick="setActiveMenu(this)">
+                    <span>🗺️</span>
+                    <span>แผนที่</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/stations" class="nav-link active" onclick="setActiveMenu(this)">
+                    <span>🏘️</span>
+                    <span>ตำบล</span>
+                </a>
+            </li>
+        </ul>
+        <div>
+            {% if session.logged_in %}
+            <!-- ✅ ลบ onclick="return confirm(...)" ออก -->
+            <a href="/logout" class="nav-login-btn" id="navLogoutBtn" data-logout-url="/logout">
+                <span>🚪</span>
+                <span>ออกจากระบบ</span>
+            </a>
+            {% else %}
+            <a href="/login" class="nav-login-btn">
+                <span>🔑</span>
+                <span>เข้าสู่ระบบ</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+<div class="main-content">
+    <div class="container">
+        <!-- ========== Tambon Header ========== -->
+        <div class="tambon-header">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span class="tambon-badge">🏘️ ตำบล</span>
+            </div>
+            
+            <div class="tambon-title">
+                <h1 id="tambon-name">กำลังโหลด...</h1>
+            </div>
+            
+            <div class="tambon-location">
+                <span>📍 <strong id="location-path">-</strong></span>
+                <span>🏭 <strong id="river-name">-</strong></span>
+                <span>📊 <strong id="station-count">0</strong> สถานี</span>
+            </div>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="search-and-stats">
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="🔍 ค้นหาชื่อสถานี หรือรหัส...">
+                <div class="filters">
+                    <select id="filter-river">
+                        <option value="">ทั้งหมด (แม่น้ำ)</option>
+                        {% for river in unique_rivers %}
+                        <option value="{{ river }}">{{ river }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="filter-province">
+                        <option value="">ทั้งหมด (จังหวัด)</option>
+                        {% for province in unique_provinces %}
+                        <option value="{{ province }}">{{ province }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="filter-amphoe">
+                        <option value="">ทั้งหมด (อำเภอ)</option>
+                        {% for amphoe in unique_amphoes %}
+                        <option value="{{ amphoe }}">{{ amphoe }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="filter-tambon">
+                        <option value="">ทั้งหมด (ตำบล)</option>
+                        {% for tambon in unique_tambons %}
+                        <option value="{{ tambon }}">{{ tambon }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div style="font-size: 2em;">🏭</div>
+                <div class="number" id="unique-rivers">{{ unique_rivers|length }}</div>
+                <div class="label">แม่น้ำ</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size: 2em;">📍</div>
+                <div class="number" id="total-stations">{{ stations|length }}</div>
+                <div class="label">สถานีทั้งหมด</div>
+            </div>
+            <div class="stat-card">
+                <div style="font-size: 2em;">📋</div>
+                <div class="number" id="filtered-count">{{ stations|length }}</div>
+                <div class="label">แสดงผล</div>
+            </div>
+        </div>
+
+        <!-- Stations Grid -->
+        <div class="stations-grid" id="stations-grid">
+            {% for station in stations %}
+            <div class="station-card" 
+                 data-river="{{ station.river }}" 
+                 data-province="{{ station.province }}"
+                 data-amphoe="{{ station.amphoe }}"
+                 data-tambon="{{ station.tambon }}"
+                 data-station="{{ station.station }}"
+                 data-location="{{ station.location }}"
+                 onclick="window.location.href='/station/{{ station.station }}'">
+                <div class="station-header">
+                    <span class="river-name">{{ station.river }}</span>
+                    <span class="station-code">{{ station.station }}</span>
+                </div>
+                <div class="station-info">
+                    <div class="info-row">
+                        <img src="/static/image/pin.png" alt="">
+                        <span class="info-label">ตำบล:</span>
+                        <span class="info-value">{{ station.tambon }}</span>
+                    </div>
+                    <div class="info-row">
+                        <img src="/static/image/bank.png" alt="">
+                        <span class="info-label">อำเภอ:</span>
+                        <span class="info-value">{{ station.amphoe }}</span>
+                    </div>
+                    <div class="info-row">
+                        <img src="/static/image/book.png" alt="">
+                        <span class="info-label">จังหวัด:</span>
+                        <span class="info-value">{{ station.province }}</span>
+                    </div>
+                    <div class="location">
+                        <img src="/static/image/placeholder.png" alt="" height="15px" width="15px">
+                        <strong>ที่ตั้ง:</strong> {{ station.location }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- No Results -->
+        <div class="no-results" id="no-results" style="display: none;">
+            <p style="font-size: 1.1em; margin-bottom: 10px;">ไม่พบสถานีที่ค้นหา</p>
+            <p style="font-size: 0.9em; color: #888;">ลองปรับเงื่อนไขการค้นหาหรือล้างตัวกรอง</p>
+            <button onclick="clearFilters()" style="margin-top: 15px; padding: 8px 20px; background: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                ล้างตัวกรอง
+            </button>
+        </div>
+    </div>
+    </div>
+
+    {% if session.logged_in %}
+<a href="/static/pages/addstation.html">
+<button class="floating-button" id="add"> + </button>
+</a>
+{% endif %}
+
+<!-- Modal Confirm Logout -->
+<div id="logoutModal" class="modal-overlay">
+<div class="modal-container">
+<div class="modal-icon warning">⚠️</div>
+<h3>ยืนยันการออกจากระบบ</h3>
+<p>คุณต้องการออกจากระบบหรือไม่?</p>
+<div class="modal-buttons">
+<button id="modalCancelBtn" class="btn-modal btn-modal-secondary">ยกเลิก</button>
+<button id="modalConfirmBtn" class="btn-modal btn-modal-danger">ออกจากระบบ</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ✅ Footer อยู่นอกสุด ก่อนปิด body -->
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <strong>สำนักงานคณะกรรมการสุขภาพแห่งชาติ (สช.)</strong>
+                </div>
+                <div class="footer-info">
+                    <p class="footer-name">นางสาวเบญวรรณ สาธุชน</p>
+                    <div class="footer-contact">
+                        <span>📞 <a href="tel:0635420279" style="text-decoration: none;">063-542-0279</a></span>
+                        <span>✉️ <a href="mailto:benyawansathuchon@gmail.com" style="text-decoration: none;">benyawansathuchon@gmail.com</a></span>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-copyright">
+                <p>&copy; 2026 National Health Commission Office (NHCO). All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+<script>
+function toggleMobileMenu() {
+    const navItems = document.getElementById('navItems');
+    if (navItems) {
+        navItems.classList.toggle('show');
+    }
+}
+
+//  ป้องกันกรณีโหลดไม่ทัน
+document.addEventListener('DOMContentLoaded', function() {
+    // ยืนยันว่าฟังก์ชันพร้อมใช้
+    if (typeof toggleMobileMenu !== 'function') {
+        window.toggleMobileMenu = function() {
+            document.getElementById('navItems')?.classList.toggle('show');
+        };
+    }
+});
+
+    // Modal ยืนยันออกจากระบบ
+    function showLogoutModal(onConfirm) {
+        const modal = document.getElementById('logoutModal');
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        const cancelBtn = document.getElementById('modalCancelBtn');
+    
+    // แสดง Modal
+    modal.classList.add('active');
+    
+    // ฟังก์ชันจัดการเมื่อกดปุ่มยืนยัน
+    const handleConfirm = () => {
+        modal.classList.remove('active');
+        if (onConfirm) onConfirm(); // เรียกฟังก์ชันเมื่อกดยืนยัน
+        cleanup();
+    };
+    
+    // ฟังก์ชันจัดการเมื่อกดปุ่มยกเลิก
+    const handleCancel = () => {
+        modal.classList.remove('active');
+        cleanup();
+    };
+    
+    // ฟังก์ชันจัดการเมื่อคลิกพื้นหลังโมดัล
+    const handleOverlayClick = (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            cleanup();
+        }
+    };
+    
+    // ฟังก์ชันจัดการเมื่อกดปุ่ม ESC
+    const handleEsc = (e) => {
+        if (e.key === 'Escape') {
+            modal.classList.remove('active');
+            cleanup();
+        }
+    };
+    
+    // ฟังก์ชันลบ Event Listener เพื่อป้องกันซ้ำ
+    const cleanup = () => {
+        confirmBtn?.removeEventListener('click', handleConfirm);
+        cancelBtn?.removeEventListener('click', handleCancel);
+        modal?.removeEventListener('click', handleOverlayClick);
+        document.removeEventListener('keydown', handleEsc);
+    };
+    
+    // เพิ่ม Event Listener
+    confirmBtn?.addEventListener('click', handleConfirm);
+    cancelBtn?.addEventListener('click', handleCancel);
+    modal?.addEventListener('click', handleOverlayClick);
+    document.addEventListener('keydown', handleEsc);
+}
+
+        // Location hierarchy data from backend
+        const locationHierarchy = {{ location_hierarchy|tojson }};
+        const allStations = {{ stations|tojson }};
+        
+        // DOM Elements
+        const searchInput = document.getElementById('search-input');
+        const filterRiver = document.getElementById('filter-river');
+        const filterProvince = document.getElementById('filter-province');
+        const filterAmphoe = document.getElementById('filter-amphoe');
+        const filterTambon = document.getElementById('filter-tambon');
+        const stationsGrid = document.getElementById('stations-grid');
+        const noResults = document.getElementById('no-results');
+        const filteredCount = document.getElementById('filtered-count');
+        const tambonNameEl = document.getElementById('tambon-name');
+        const locationPathEl = document.getElementById('location-path');
+        const riverNameEl = document.getElementById('river-name');
+        const stationCountEl = document.getElementById('station-count');
+        
+        const stationCards = Array.from(document.querySelectorAll('.station-card'));
+        
+        // Store original options
+        const allAmphoes = [
+            {% for amphoe in unique_amphoes %}"{{ amphoe }}"{% if not loop.last %},{% endif %}{% endfor %}
+        ];
+        const allTambons = [
+            {% for tambon in unique_tambons %}"{{ tambon }}"{% if not loop.last %},{% endif %}{% endfor %}
+        ];
+
+        //  ดึงตำบลจาก URL parameter หรือเลือกจากฟิลเตอร์
+        function getSelectedTambon() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlTambon = urlParams.get('tambon');
+            const filterTambon = document.getElementById('filter-tambon').value;
+            return urlTambon || filterTambon || '';
+        }
+
+        // แก้ไขฟังก์ชัน updateTambonHeader() ให้รองรับกรณีไม่พบผล
+        function updateTambonHeader(showAll = false) {
+            const selectedTambon = filterTambon.value;  // อ่านจากฟิลเตอร์โดยตรง
+    
+        // ถ้า showAll=true หรือไม่มีตำบลที่เลือก จะแสดงสถานะเริ่มต้น
+        if (showAll || !selectedTambon) {
+            tambonNameEl.textContent = 'เลือกตำบลเพื่อดูสถานี';
+            locationPathEl.textContent = '-';
+            riverNameEl.textContent = '-';
+            stationCountEl.textContent = allStations.length;
+            return;
+        }
+    
+        // กรณีมีตำบลที่เลือก จะแสดงข้อมูลตำบลนั้น
+        tambonNameEl.textContent = selectedTambon;
+    
+        let path = selectedTambon;
+        let foundRiver = '';
+    
+        for (const prov in locationHierarchy) {
+            for (const amph in locationHierarchy[prov]) {
+                if (locationHierarchy[prov][amph].includes(selectedTambon)) {
+                    path = `${selectedTambon}, ${amph}, ${prov}`;
+                    const stationInTambon = allStations.find(s => s.tambon === selectedTambon);
+                    if (stationInTambon) foundRiver = stationInTambon.river;
+                    break;
+                }
+            }
+        }
+    
+        locationPathEl.textContent = path;
+        riverNameEl.textContent = foundRiver || '-';
+    
+        // นับสถานีในตำบลนี้ (นับจาก allStations ไม่ใช่จากผลการกรอง)
+        const count = allStations.filter(s => s.tambon === selectedTambon).length;
+        stationCountEl.textContent = count;
+    }
+
+    // ฟังก์ชันกรองสถานี
+    function filterStations() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const selectedRiver = filterRiver.value;
+        const selectedProvince = filterProvince.value;
+        const selectedAmphoe = filterAmphoe.value;
+        const selectedTambon = filterTambon.value;
+
+        let visibleCount = 0;
+
+        stationCards.forEach(card => {
+            // อ่านค่าจาก attribute
+            const river = card.dataset.river;
+            const province = card.dataset.province;
+            const amphoe = card.dataset.amphoe;
+            const tambon = card.dataset.tambon;
+            const station = card.dataset.station.toLowerCase();
+            const location = card.dataset.location.toLowerCase();
+           
+            // เงื่อนไขการกรอง
+            const matchesSearch = !searchTerm || 
+                station.includes(searchTerm) || 
+                river.toLowerCase().includes(searchTerm) ||
+                location.includes(searchTerm);
+
+            const matchesRiver = !selectedRiver || river === selectedRiver;
+            const matchesProvince = !selectedProvince || province === selectedProvince;
+            const matchesAmphoe = !selectedAmphoe || amphoe === selectedAmphoe;
+            const matchesTambon = !selectedTambon || tambon === selectedTambon;
+        // แสดง/ซ่อน การ์ดตาม result
+        if (matchesSearch && matchesRiver && matchesProvince && matchesAmphoe && matchesTambon) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    // อัปเดตจำนวนที่แสดงผล
+    filteredCount.textContent = visibleCount;
+
+    // อัปเดตเฮดเดอร์ตามสถานะการกรอง
+    if (selectedTambon && visibleCount === 0 && searchTerm) {
+        // ถ้าเลือกตำบลไว้ แต่ค้นหาแล้วไม่พบ จะแสดงข้อความพิเศษ
+        tambonNameEl.textContent = `ไม่พบ "${searchTerm}" ในตำบล ${selectedTambon}`;
+        locationPathEl.textContent = '-';
+        riverNameEl.textContent = '-';
+        stationCountEl.textContent = '0';
+    } else if (selectedTambon && visibleCount === 0 && !searchTerm) {
+        // ถ้าเลือกตำบล แต่กรองอื่นแล้วไม่พบ แสดงว่าไม่พบสถานีในตำบลนี้
+        tambonNameEl.textContent = `ไม่พบสถานีในตำบล ${selectedTambon}`;
+        stationCountEl.textContent = '0';
+    } else {
+        // ปกติ จะอัปเดตเฮดเดอร์ตามตำบลที่เลือก
+        updateTambonHeader();
+    }
+    // แสดงข้อความ "ไม่พบสถานี" กรณีไม่มีสถานี
+    if (visibleCount === 0) {
+        noResults.style.display = 'block';
+        stationsGrid.style.display = 'none';
+    } else {
+        noResults.style.display = 'none';
+        stationsGrid.style.display = 'grid';
+    }
+}
+
+        // อัปเดตตัวเลือกอำเภอตามจังหวัด
+        function updateAmphoeDropdown() {
+            const selectedProvince = filterProvince.value;
+            const currentValue = filterAmphoe.value;
+            // รีเซ็ตตัวเลือก
+            filterAmphoe.innerHTML = '<option value="">ทั้งหมด (อำเภอ)</option>';
+            
+            if (selectedProvince && locationHierarchy[selectedProvince]) {
+                // ถ้าเลือกจังหวัด จะแสดงเฉพาะอำเภอในจังหวัดนั้น
+                const amphoes = Object.keys(locationHierarchy[selectedProvince]).sort();
+                amphoes.forEach(amphoe => {
+                    const option = document.createElement('option');
+                    option.value = amphoe;
+                    option.textContent = amphoe;
+                    filterAmphoe.appendChild(option);
+                });
+            } else if (selectedProvince) {
+                allAmphoes.forEach(amphoe => {
+                    const option = document.createElement('option');
+                    option.value = amphoe;
+                    option.textContent = amphoe;
+                    filterAmphoe.appendChild(option);
+                });
+            }
+            // ถ้าค่าเดิมไม่มีในตัวเลือก จะรีเซ็ตเป็นค่าว่าง
+            if (currentValue && !Array.from(filterAmphoe.options).some(opt => opt.value === currentValue)) {
+                filterAmphoe.value = '';
+            }
+            
+            updateTambonDropdown(); // อัปเดตตำบลต่อ
+        }
+        
+        // Update Tambon dropdown
+        function updateTambonDropdown() {
+            const selectedProvince = filterProvince.value;
+            const selectedAmphoe = filterAmphoe.value;
+            const currentValue = filterTambon.value;
+            
+            filterTambon.innerHTML = '<option value="">ทั้งหมด (ตำบล)</option>';
+            
+            if (selectedProvince && selectedAmphoe && 
+                locationHierarchy[selectedProvince] && 
+                locationHierarchy[selectedProvince][selectedAmphoe]) {
+                const tambons = locationHierarchy[selectedProvince][selectedAmphoe];
+                tambons.forEach(tambon => {
+                    const option = document.createElement('option');
+                    option.value = tambon;
+                    option.textContent = tambon;
+                    filterTambon.appendChild(option);
+                });
+            } else if (selectedProvince && locationHierarchy[selectedProvince]) {
+                const allTambonsInProvince = new Set();
+                Object.values(locationHierarchy[selectedProvince]).forEach(tambons => {
+                    tambons.forEach(t => allTambonsInProvince.add(t));
+                });
+                Array.from(allTambonsInProvince).sort().forEach(tambon => {
+                    const option = document.createElement('option');
+                    option.value = tambon;
+                    option.textContent = tambon;
+                    filterTambon.appendChild(option);
+                });
+            } else {
+                allTambons.forEach(tambon => {
+                    const option = document.createElement('option');
+                    option.value = tambon;
+                    option.textContent = tambon;
+                    filterTambon.appendChild(option);
+                });
+            }
+            
+            if (currentValue && !Array.from(filterTambon.options).some(opt => opt.value === currentValue)) {
+                filterTambon.value = '';
+            }
+        }
+
+        // ฟังก์ชันกรองสถานีหลัก
+        function filterStations() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const selectedRiver = filterRiver.value;
+            const selectedProvince = filterProvince.value;
+            const selectedAmphoe = filterAmphoe.value;
+            const selectedTambon = filterTambon.value;
+
+            let visibleCount = 0;
+
+            stationCards.forEach(card => {
+                const river = card.dataset.river;
+                const province = card.dataset.province;
+                const amphoe = card.dataset.amphoe;
+                const tambon = card.dataset.tambon;
+                const station = card.dataset.station.toLowerCase();
+                const location = card.dataset.location.toLowerCase();
+
+                const matchesSearch = !searchTerm || 
+                    station.includes(searchTerm) || 
+                    river.toLowerCase().includes(searchTerm) ||
+                    location.includes(searchTerm);
+
+                const matchesRiver = !selectedRiver || river === selectedRiver;
+                const matchesProvince = !selectedProvince || province === selectedProvince;
+                const matchesAmphoe = !selectedAmphoe || amphoe === selectedAmphoe;
+                const matchesTambon = !selectedTambon || tambon === selectedTambon;
+
+                if (matchesSearch && matchesRiver && matchesProvince && matchesAmphoe && matchesTambon) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            filteredCount.textContent = visibleCount;
+
+            if (visibleCount === 0) {
+                noResults.style.display = 'block';
+                stationsGrid.style.display = 'none';
+            } else {
+                noResults.style.display = 'none';
+                stationsGrid.style.display = 'grid';
+            }
+        }
+
+        // ล้างตัวกรองทั้งหมด
+        function clearFilters() {
+            searchInput.value = '';
+            filterRiver.value = '';
+            filterProvince.value = '';
+            filterAmphoe.innerHTML = '<option value="">ทั้งหมด (อำเภอ)</option>';
+            filterTambon.innerHTML = '<option value="">ทั้งหมด (ตำบล)</option>';
+            
+            // รีเซ็ต URL
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            
+            updateAmphoeDropdown();
+            updateTambonHeader();
+            filterStations();
+        }
+
+        // Event Listeners
+        searchInput.addEventListener('input', filterStations);
+        filterRiver.addEventListener('change', filterStations);
+        
+        filterProvince.addEventListener('change', function() {
+            updateAmphoeDropdown();
+            filterStations();
+        });
+        
+        filterAmphoe.addEventListener('change', function() {
+            updateTambonDropdown();
+            filterStations();
+        });
+        
+        filterTambon.addEventListener('change', function() {
+            const tambon = this.value;
+    
+            // อัปเดต URL เฉพาะเมื่อมีค่าตำบล
+            if (tambon) {
+                const newUrl = `${window.location.pathname}?tambon=${encodeURIComponent(tambon)}`;
+                window.history.replaceState({}, document.title, newUrl);
+            } else {
+            // ถ้าล้างตำบล จะลบพารามิเตอร์ออกจาก URL
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+    
+    // เรียก updateTambonHeader() โดยส่งพารามิเตอร์ว่าให้แสดงทั้งหมดหรือไม่
+    updateTambonHeader(!tambon);
+    filterStations();
+});
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Logout จาก Navigation Menu
+    const navLogoutBtn = document.getElementById('navLogoutBtn');
+    if (navLogoutBtn) {
+        navLogoutBtn.addEventListener('click', (e) => {
+            e.preventDefault(); // ป้องกันการลิงก์ทันที
+            const logoutUrl = navLogoutBtn.dataset.logoutUrl || '/logout';
+            showLogoutModal(() => {
+                window.location.href = logoutUrl;
+            });
+        });
+    }
+            updateTambonHeader();
+            updateAmphoeDropdown();
+            filterStations();
+        });
+</script>
+</body>
+</html>

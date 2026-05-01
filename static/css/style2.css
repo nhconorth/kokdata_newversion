@@ -1,0 +1,404 @@
+@import url('https://fonts.googleapis.com/css2?family=Anuphan:wght@100..700&family=Noto+Sans+Thai:wght@100..900&display=swap');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Noto Sans Thai", sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #B8D4A5 0%, #CFAF9F 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.back-button {
+    display: inline-block;
+    margin-bottom: 20px;
+    padding: 10px 20px;
+    background: white;
+    color: black;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    cursor: pointer;
+}
+
+.back-button:hover {
+    background: #99ADA8;
+    color: white;
+    transform: translateX(-5px);
+}
+
+.form-header {
+    text-align: left;
+    margin-bottom: 30px;
+}
+
+.form-header h1 {
+    color: #333;
+    font-size: 2.2em;
+    margin-bottom: 10px;
+}
+
+.form-header p {
+    color: black;
+    font-size: 1.1em;
+}
+
+.station-form {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+}
+
+.form-section {
+    margin-bottom: 30px;
+}
+
+.form-section h2 {
+    color: black;
+    font-size: 1.6em;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #444;
+}
+
+.form-group label span {
+    color: #e74c3c;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #8cb4c8;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    margin-top: 15px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+}
+
+.water-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.water-table th,
+.water-table td {
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+/* ปรับให้ทั้ง water-table และ soil-table ใช้สไตล์เดียวกัน */
+.water-table,
+.soil-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+}
+
+.water-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+}
+
+.water-table th,
+.water-table td,
+.soil-table th,
+.soil-table td {
+    padding: 12px 10px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.water-table th,
+.soil-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+}
+
+.water-table input {
+    width: 80px;
+    padding: 6px 8px;
+    font-size: 0.95em;
+}
+
+.water-table input,
+.soil-table input {
+    width: 80px;
+    padding: 6px 8px;
+    font-size: 0.95em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.btn-add-row {
+    background: #2f793e;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-add-row:hover {
+    background: rgb(147, 197, 160);
+}
+
+.btn-add-col {
+    background: #2556c0;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.btn-add-col:hover {
+    background: rgb(129, 189, 208);
+}
+
+.btn-remove-icon {
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.btn-remove-icon:not([style*="opacity: 0.4"]):hover {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.btn-submit,
+.btn-reset {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-submit {
+    background: #258923;
+    color: white;
+}
+
+.btn-submit:hover {
+    background: #66a373;
+    transform: translateY(-2px);
+}
+
+.btn-reset {
+    background: #d61010;
+    color: white;
+}
+
+.btn-reset:hover {
+    background: #b84040;
+}
+
+/* === Modal Overlay === */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+}
+        
+.modal-overlay.active { 
+    display: flex; 
+}
+        
+@keyframes fadeIn { 
+    from { 
+        opacity: 0; 
+    } to { 
+        opacity: 1; 
+    } 
+}
+        
+/* === Modal Container === */
+.modal-container {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 32px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s ease;
+}
+        
+@keyframes slideDown {
+    from { 
+        opacity: 0; 
+        transform: translateY(-30px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+        
+.modal-icon { 
+    font-size: 48px; 
+    margin-bottom: 12px; 
+}
+
+.modal-icon.warning { 
+    color: #f39c12; 
+}
+
+.modal-icon.success { 
+    color: #27ae60; 
+}
+        
+.modal-container h3 { 
+    margin: 8px 0 12px; 
+    color: #2c3e50; 
+    font-size: 1.3rem; 
+}
+
+.modal-container p { 
+    color: #7f8c8d; 
+    margin-bottom: 24px; 
+    line-height: 1.5; 
+}
+        
+/* === Modal Buttons === */
+.modal-buttons { 
+    display: flex; 
+    gap: 12px; 
+    justify-content: center; 
+}
+        
+.btn-modal {
+    padding: 10px 24px; 
+    border: none; 
+    border-radius: 8px;
+    font-size: 14px; 
+    font-weight: 500; 
+    cursor: pointer; 
+    transition: 0.2s;
+}
+        
+.btn-modal-danger { 
+    background: #e74c3c; 
+    color: white; 
+}
+       
+.btn-modal-danger:hover { 
+    background: #c0392b; 
+    transform: translateY(-2px); 
+}
+        
+.btn-modal-secondary { 
+    background: #ecf0f1; 
+    color: #2c3e50; 
+}
+        
+.btn-modal-secondary:hover { 
+    background: #bdc3c7; 
+}
+        
+.btn-modal-primary { 
+    background: #3498db; 
+    color: white; 
+}
+        
+.btn-modal-primary:hover { 
+    background: #2980b9; 
+    transform: translateY(-2px); 
+}
+        
+/* Responsive */
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .water-table input {
+        width: 70px;
+        font-size: 0.9em;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .btn-add-col {
+        padding: 6px 12px;
+        font-size: 0.9em;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-container { 
+        padding: 20px 24px; 
+        width: 95%; 
+    }
+
+    .modal-buttons { 
+        flex-direction: column; 
+    }
+}
