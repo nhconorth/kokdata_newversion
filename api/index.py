@@ -60,13 +60,14 @@ def get_stations():
 # เพิ่มสถานีใหม่ + ข้อมูลน้ำ/ดิน
 @api_bp.route('/stations', methods=['POST'])
 def add_station_api():
+    conn = None  # ← declare ก่อน try
     try:
         from app import get_db
-        data = request.get_json() # รับ JSON จาก Frontend
+        data = request.get_json()
         
         if not data:
             return jsonify({'success': False, 'error': 'No JSON data received'}), 400
-        # ดึงและทำความสะอาดข้อมูลพื้นฐาน
+
         station  = str(data.get('station',  '') or '').strip()
         river    = str(data.get('river',    '') or '').strip()
         tambon   = str(data.get('tambon',   '') or '').strip()
@@ -74,7 +75,6 @@ def add_station_api():
         province = str(data.get('province', '') or '').strip()
         location = str(data.get('location', '') or '').strip()
 
-        # รับและแปลง lat/lon
         lat_raw = data.get('lat')
         lon_raw = data.get('lon')
         try:
@@ -94,7 +94,7 @@ def add_station_api():
         conn = get_db()
         cur = conn.cursor()
         
-        # ✅ INSERT พร้อม lat, lon
+        # INSERT station
         cur.execute("""
             INSERT INTO station_data
                 (station, river, tambon, amphoe, province, location, lat, lon)
@@ -109,18 +109,21 @@ def add_station_api():
                 lon      = EXCLUDED.lon
         """, (station, river, tambon, amphoe, province, location, lat, lon))
 
-        # บันทึกข้อมูลน้ำ
+        # *** ลบข้อมูลเก่าก่อน insert ใหม่ ***
+        cur.execute('DELETE FROM water_data WHERE station = %s', (station,))
+        cur.execute('DELETE FROM soil_data WHERE station = %s', (station,))
+
+        # บันทึกข้อมูลน้ำ — แก้เป็น 17 ครั้ง
         water_count = 0
         for item in data.get('waterData', []):
             param = str(item.get('parameter', '') or '').strip()
             unit  = str(item.get('unit', '')      or '').strip()
             if not param:
                 continue
-            for i in range(1, 16):  #  16 ครั้ง
+            for i in range(1, 18):  # ← แก้เป็น 18 (1-17)
                 value = str(item.get(f'check{i}', '') or '').strip()
                 if not value:
                     continue
-                # แปลงค่าเป็นตัวเลข 
                 numeric_value = None
                 if value not in ['-', 'ND']:
                     try:
@@ -134,13 +137,13 @@ def add_station_api():
                 """, (station, param, unit, location, f'ครั้งที่ {i}', value, numeric_value))
                 water_count += 1
 
-        # บันทึกข้อมูลดิน
+        # บันทึกข้อมูลดิน — แก้เป็น 10 ครั้ง
         soil_count = 0
         for item in data.get('soilData', []):
             param = str(item.get('parameter', '') or '').strip()
             if not param:
                 continue
-            for i in range(1, 10):  # 9 ครั้ง
+            for i in range(1, 11):  # ← แก้เป็น 11 (1-10)
                 value = str(item.get(f'check{i}', '') or '').strip()
                 if not value:
                     continue
@@ -160,19 +163,23 @@ def add_station_api():
         conn.commit()
         conn.close()
 
-        print(f"✅ บันทึกสำเร็จ: {station} lat={lat} lon={lon}")
+        print(f"✅ บันทึกสำเร็จ: {station} lat={lat} lon={lon} น้ำ={water_count} ดิน={soil_count}")
         return jsonify({
             'success': True,
             'message': 'บันทึกสำเร็จ',
             'station': station,
             'lat': lat,
             'lon': lon,
-            'water_count': water_count, # จำนวนเรคคอร์ดน้ำที่บันทึก
-            'soil_count': soil_count # จำนวนเรคคอร์ดดินที่บันทึก
+            'water_count': water_count,
+            'soil_count': soil_count
         }), 201
 
     except Exception as e:
-        import traceback; traceback.print_exc()
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # === GET /api/stations/<station_code> - ดึงข้อมูลสถานีเดียว ===
