@@ -668,7 +668,7 @@ def edit_station(station_code):
 
 # ค่าคงที่ — เพิ่มบนสุดของไฟล์ถัดจาก import
 WATER_CHECK_COUNT = 17
-SOIL_CHECK_COUNT  =
+SOIL_CHECK_COUNT  = 10
 
 @app.route('/api/stations', methods=['POST'])
 def api_add_station():
