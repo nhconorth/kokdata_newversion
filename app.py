@@ -667,8 +667,8 @@ def edit_station(station_code):
         return f"Error loading edit form: {str(e)}", 500
 
 # ค่าคงที่ — เพิ่มบนสุดของไฟล์ถัดจาก import
-WATER_CHECK_COUNT = 15
-SOIL_CHECK_COUNT  = 9
+WATER_CHECK_COUNT = 17
+SOIL_CHECK_COUNT  = 10
 
 @app.route('/api/stations', methods=['POST'])
 def api_add_station():
