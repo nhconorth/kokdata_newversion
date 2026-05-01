@@ -427,7 +427,7 @@ def add_station():
             print(f"✅ Saved station: {station}")
             # === 2. บันทึกข้อมูลน้ำ ===
             water_count = 0
-            water_check_count = int(request.form.get('water_check_count', 14))
+            water_check_count = int(request.form.get('water_check_count', 18))
             for i in range(1, water_check_count + 1):
                 check_values = request.form.getlist(f'check{i}[]')
                 if not check_values or all(v == '' for v in check_values):
@@ -453,7 +453,7 @@ def add_station():
             print(f"✅ Saved {water_count} water data records")
             # === 3. บันทึกข้อมูลดิน ===
             soil_count = 0
-            soil_check_count = int(request.form.get('soil_check_count', 8))
+            soil_check_count = int(request.form.get('soil_check_count', 11))
             for i in range(1, soil_check_count + 1):
                 soil_check_values = request.form.getlist(f'soil_check{i}[]')
                 if not soil_check_values or all(v == '' for v in soil_check_values):
@@ -668,7 +668,7 @@ def edit_station(station_code):
 
 # ค่าคงที่ — เพิ่มบนสุดของไฟล์ถัดจาก import
 WATER_CHECK_COUNT = 17
-SOIL_CHECK_COUNT  = 10
+SOIL_CHECK_COUNT  =
 
 @app.route('/api/stations', methods=['POST'])
 def api_add_station():
