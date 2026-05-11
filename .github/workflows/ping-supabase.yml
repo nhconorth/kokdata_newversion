@@ -1,0 +1,36 @@
+name: 🔁 Keep Supabase Awake
+
+on:
+  schedule:
+    - cron: '0 0 */3 * *'   # ทุก 3 วัน เที่ยงคืน UTC
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🏓 Ping Supabase
+        run: |
+          echo "🔍 Pinging Supabase..."
+
+          RESPONSE=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            "https://oaemdjvtphyrrfdxizzm.supabase.co/rest/v1/station_data?select=id&limit=1" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY")
+
+          echo "📊 HTTP Response: $RESPONSE"
+          echo "📄 Body: $(cat /tmp/resp.txt)"
+
+          if [ "$RESPONSE" = "200" ]; then
+            echo "✅ Supabase is awake!"
+          else
+            echo "⚠️ Response: $RESPONSE"
+            exit 1
+          fi
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: 🕐 Done
+        run: |
+          echo "⏰ $(TZ='Asia/Bangkok' date '+%Y-%m-%d %H:%M:%S') Bangkok time"
